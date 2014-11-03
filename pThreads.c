@@ -23,7 +23,6 @@ int main(void)
    int thread_args[NUM_THREADS];
    int rc, i;
  
-   // create all threads one by one
    for (i=0; i<NUM_THREADS; ++i) {
       thread_args[i] = i;
       printf("In main: creating thread %d\n", i);
