@@ -1,127 +1,115 @@
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include </usr/include/semaphore.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <time.h>
 
-// for sleep
-#include <unistd.h>
+#define SIZE 5
 
-//#define BUFF_SIZE   10      /     /* total number of slots */
-//#define NITERS      8           /* number of items produced/consumed */
+pthread_mutex_t mutex;
+sem_t full, empty;
+int count = 0;
 
-typedef struct
-{
-    int buf[BUFF_SIZE];   /* shared var */
-    int in;               /* buf[in%BUFF_SIZE] is the first empty slot */
-    int out;              /* buf[out%BUFF_SIZE] is the first full slot */
-    sem_t full;           /* keep track of the number of full spots */
-    sem_t empty;          /* keep track of the number of empty spots */
+typedef int buffer_item;
 
-    // use correct type here
-    pthread_mutex_t mutex;          /* enforce mutual exclusion to shared data */
-} sbuf_t;
+buffer_item buffer[SIZE];
 
-sbuf_t shared;
+pthread_t pt, ct;
 
+void *producer(void *arg) {
+	buffer_item item;
+	int i = 0;
+	while(1) {
+		sleep((rand() % 10));
+		item = (rand() % RAND_MAX);
 
-void *Producer(void *arg)
-{
-    int i, item, index;
+		sem_wait(&empty);
+			pthread_mutex_lock(&mutex);
+				if(insert_item(item) == 0) {
+					printf("[Pthread:%d] Producing %d \n", arg, item);
+				} 
+				else{
+					printf("Buffer Full\n");
+				}
+			pthread_mutex_unlock(&mutex);
+		sem_post(&full);
 
-    //index = (int)arg;
-
-
-    for (i=0; i < NITERS; i++)
-    {
-
-        /* Produce item */
-        item = i;
-
-        /* Prepare to write item to buf */
-
-        /* If there are no empty slots, wait */
-        sem_wait(&shared.empty);
-        /* If another thread uses the buffer, wait */
-        pthread_mutex_lock(&shared.mutex);
-        shared.buf[shared.in] = rand();
-        shared.in = (shared.in+1)%BUFF_SIZE;
-        printf("[P%d] Producing %d \n", arg, item);
-        fflush(stdout);
-        /* Release the buffer */
-        pthread_mutex_unlock(&shared.mutex);
-        /* Increment the number of full slots */
-        sem_post(&shared.full);
-
-        /* Interleave  producer and consumer execution */
-        if (i % 2 == 1) sleep(1);
-    }
-    return NULL;
+		if (i % 2 == 1) {
+			sleep(1);
+			i++;
+		}
+	}
 }
 
-void *Consumer(void *arg)
-{
-    int i, item, index;
-
-    //index = (int)arg;
-    for (i=NITERS; i > 0; i--) {
-        sem_wait(&shared.full);
-        pthread_mutex_lock(&shared.mutex);
-        item=i;
-        item=shared.buf[shared.out];
-        shared.out = (shared.out+1)%BUFF_SIZE;
-        printf("[C%d] Consuming  %d \n", arg, item);
-        fflush(stdout);
-        /* Release the buffer */
-        pthread_mutex_unlock(&shared.mutex);
-        /* Increment the number of full slots */
-        sem_post(&shared.empty);
-
-        /* Interleave  producer and consumer execution */
-        if (i % 2 == 1) sleep(1);
-    }
-    return NULL;
-}
-
-int main(int argc, char *argv[])
-{
-	srand(time(NULL));
-	printf("number 1: %s\n", argv[1]);
-	printf("number 2: %s\n", argv[2]);
-	printf("number 3: %s\n", argv[3]);
+void *consumer(void *arg) {
+	buffer_item item;
+	int i = 0;
+	while(1) {
+		sleep(rand() % 10);
+	
+		sem_wait(&full);
+			pthread_mutex_lock(&mutex);
+				if(remove_item(&item) == 0) {
+					printf("[Cthread:%d] Consuming %d \n", arg, item);
+				}
+				else{
+					printf("Buffer Empty\n");
+				}
+			pthread_mutex_unlock(&mutex);
+		sem_post(&empty);
 		
-	pthread_t idP, idC;
-    int index, p, c, sleeptime;
-	int status;
-	sleeptime = atoi(argv[1]);
-	p = atoi(argv[2]);
-	c = atoi(argv[3]);
-	
-	sleeptime = sleeptime * 60; 
-	
-	printf("p: %d\n", p);
-	printf("c: %d\n", c);
-	
-    sem_init(&shared.full, 0, 0);
-    sem_init(&shared.empty, 0, BUFF_SIZE);
-    pthread_mutex_init(&shared.mutex, NULL);
-    for (index = 0; index < p; index++)
-    {
-        /* Create a new producer */
-        pthread_create(&idP, NULL, Producer, (void *)index);
-    }
-    /*create a new Consumer*/
-    for(index=0; index < c; index++)
-    {
-        pthread_create(&idC, NULL, Consumer, (void *)index);
-    }
-	while (1) {
-		sleep(sleeptime);
-		sleeptime = (sleeptime/60);
-		printf("Program executed for %d seconds\n", sleeptime);
-		exit(0);
+		if (i % 2 == 0) {
+			sleep(1);
+			i++;
+		}
+	}
+}
+
+int insert_item(buffer_item item) {
+   if(count < SIZE) {
+      buffer[count] = item;
+      count++;
+      return 0;
+   }
+   else {
+      return -1;
+   }
+}
+
+int remove_item(buffer_item *item) {
+   if(count > 0) {
+      *item = buffer[(count-1)];
+      count--;
+      return 0;
+   }
+   else { 
+      return -1;
+   }
+}
+
+int main(int argc, char *argv[]) {
+	int i;
+	srand( time( NULL ) );
+
+	int sleeptime = atoi(argv[1]);
+	int p = atoi(argv[2]);
+	int c = atoi(argv[3]);
+
+	pthread_mutex_init(&mutex, NULL);
+	sem_init(&full, 0, 0);
+	sem_init(&empty, 0, SIZE);
+   
+	for(i = 0; i < p; i++) {
+		pthread_create(&pt,NULL,producer,(void *)(intptr_t)i);
 	}
 
+	for(i = 0; i < c; i++) {
+		pthread_create(&ct,NULL,consumer,(void *)(intptr_t)i);
+	}
 
-    pthread_exit(NULL);
+	sleep(sleeptime);
+	printf("Program executed for %d seconds\n", sleeptime);
+	exit(0);
+	
+	pthread_exit(NULL);
 }
