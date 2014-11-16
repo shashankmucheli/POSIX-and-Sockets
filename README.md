@@ -1,6 +1,5 @@
 ﻿Instructions
 ------------
-Git clone https://github.com/shashankmucheli/ProducerConsumerProblem_POSIX.git <DIRECTORY>
 
 gcc producerconsumer.c
 
