@@ -4,7 +4,7 @@ Git clone https://github.com/shashankmucheli/ProducerConsumerProblem_POSIX.git <
 
 gcc producerconsumer.c
 
-./a.out <sleep_time> <No.Producers> <No.Consumers>
+./a.out "sleep_time" "No.Producers" "No.Consumers"
 
 Problem
 --------
