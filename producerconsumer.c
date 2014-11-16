@@ -4,7 +4,7 @@
 #include <semaphore.h>
 #include <time.h>
 
-#define SIZE 5
+#define SIZE 10
 
 pthread_mutex_t mutex;
 sem_t full, empty;
@@ -65,6 +65,12 @@ void *consumer(void *arg) {
 	}
 }
 
+void initialize(){
+	pthread_mutex_init(&mutex, NULL);
+	sem_init(&full, 0, 0);
+	sem_init(&empty, 0, SIZE);	
+}
+
 int insert_item(buffer_item item) {
    if(count < SIZE) {
       buffer[count] = item;
@@ -94,10 +100,8 @@ int main(int argc, char *argv[]) {
 	int sleeptime = atoi(argv[1]);
 	int p = atoi(argv[2]);
 	int c = atoi(argv[3]);
-
-	pthread_mutex_init(&mutex, NULL);
-	sem_init(&full, 0, 0);
-	sem_init(&empty, 0, SIZE);
+	
+	initialize();
    
 	for(i = 0; i < p; i++) {
 		pthread_create(&pt,NULL,producer,(void *)(intptr_t)i);
