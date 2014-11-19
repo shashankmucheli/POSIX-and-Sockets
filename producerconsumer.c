@@ -1,3 +1,15 @@
+/*
+Name: Shashank Mucheli Sukumar
+ID: 01442857
+Course: CIS 570
+Instructor: Dr. Paul Gracia
+
+Instructions to compile the code: 
+	1. Open terminal in an unix environment.
+	2. type: gcc producerconsumer.c
+	3. type: ./a.out <sleeptime> <number of producer threads> <number of consumer threads>
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -96,7 +108,12 @@ int remove_item(buffer_item *item) {
 int main(int argc, char *argv[]) {
 	int i;
 	srand( time( NULL ) );
-
+	
+	if(argc < 3){
+		printf("Invalid number of arguments\nMinimum 3 arguments: \n1. Sleeptime\n2. Number of producer threads\n3. Number of consumer threads\n");
+		exit(0);
+	}
+	
 	int sleeptime = atoi(argv[1]);
 	int p = atoi(argv[2]);
 	int c = atoi(argv[3]);
